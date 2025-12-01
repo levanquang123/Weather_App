@@ -12,15 +12,15 @@ public class WeatherParser {
 
         WeatherData data = new WeatherData();
 
-        data.temperature = current.getDouble("temperature_2m") + " °C";
-        data.realFeel = current.getDouble("apparent_temperature") + " °C";
-        data.wind = current.getDouble("wind_speed_10m") + " km/h";
-        data.humidity = current.getInt("relative_humidity_2m") + " %";
-        data.cloud = current.getInt("cloud_cover") + " %";
-        data.pressure = current.getDouble("pressure_msl") + " hPa";
-        data.visibility = (current.getDouble("visibility") / 1000) + " km";
-        data.sunrise = daily.getJSONArray("sunrise").getString(0);
-        data.sunset = daily.getJSONArray("sunset").getString(0);
+        data.temperature  = current.getDouble("temperature_2m") + " °C";
+        data.realFeel     = current.getDouble("apparent_temperature") + " °C";
+        data.wind         = current.getDouble("wind_speed_10m") + " km/h";
+        data.humidity     = current.getInt("relative_humidity_2m") + " %";
+        data.cloud        = current.getInt("cloud_cover") + " %";
+        data.pressure     = current.getDouble("pressure_msl") + " hPa";
+        data.visibility   = (current.getDouble("visibility")/1000) + " km";
+        data.sunrise      = daily.getJSONArray("sunrise").getString(0);
+        data.sunset       = daily.getJSONArray("sunset").getString(0);
 
         int code = current.getInt("weather_code");
         data.weatherStatus = decodeStatus(code);

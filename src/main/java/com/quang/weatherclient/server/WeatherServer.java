@@ -12,12 +12,10 @@ public class WeatherServer {
 
     public static void main(String[] args) {
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
-            System.out.println("Weather Server đang chạy trên port " + PORT);
+            System.out.println("Weather Server running on port " + PORT);
 
             while (true) {
                 Socket client = serverSocket.accept();
-                System.out.println("Client kết nối: " + client.getInetAddress());
-
                 new Thread(() -> handleClient(client)).start();
             }
 
@@ -27,21 +25,29 @@ public class WeatherServer {
     }
 
     private static void handleClient(Socket client) {
-        try {
-            BufferedReader br = new BufferedReader(
-                    new InputStreamReader(client.getInputStream())
-            );
-            PrintWriter pw = new PrintWriter(client.getOutputStream(), true);
+        try (
+                Socket socket = client;
+                BufferedReader br = new BufferedReader(
+                        new InputStreamReader(socket.getInputStream())
+                );
+                PrintWriter pw = new PrintWriter(socket.getOutputStream(), true)
+        ) {
+            String cityName = br.readLine();
+            System.out.println("Client yêu cầu: " + cityName);
 
-            String city = br.readLine(); // nhận DANANG / HANOI / HCM
+            double[] coords = GeocodingFetcher.searchCity(cityName);
 
-            System.out.println("Client yêu cầu thành phố: " + city);
+            if (coords == null) {
+                // Gửi 1 dòng báo lỗi rồi đóng socket
+                pw.println("CITY_NOT_FOUND");
+                return; // try-with-resources sẽ tự đóng socket
+            }
 
-            String json = WeatherFetcher.getWeather(city);
+            String json = WeatherFetcher.getWeatherByLatLon(coords[0], coords[1]);
 
-            pw.println(json); // trả JSON về client
+            // Gửi JSON (nhiều dòng cũng được), xong thì đóng socket
+            pw.println(json);
 
-            client.close();
         } catch (Exception ex) {
             ex.printStackTrace();
         }

@@ -9,7 +9,7 @@ import java.net.Socket;
 
 public class WeatherClient extends JFrame {
 
-    private JComboBox<String> cityBox;
+    private JTextField cityField;
     private JLabel largeIcon;
     private JLabel tempLabel;
     private JLabel statusLabel;
@@ -25,17 +25,21 @@ public class WeatherClient extends JFrame {
 
         // ===== TOP PANEL =====
         JPanel top = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        cityBox = new JComboBox<>(new String[]{"DANANG", "HANOI", "HCM"});
+
+        cityField = new JTextField(15);
+        cityField.setFont(new Font("Arial", Font.PLAIN, 16));
+
         JButton btn = new JButton("Get Weather");
         btn.addActionListener(e -> fetchWeather());
-        top.add(cityBox);
+
+        top.add(cityField);
         top.add(btn);
         add(top, BorderLayout.NORTH);
 
-        // ===== MAIN WEATHER PANEL (CENTER) =====
+        // ===== MAIN WEATHER PANEL =====
         mainPanelContainer = new JPanel();
         mainPanelContainer.setLayout(new BoxLayout(mainPanelContainer, BoxLayout.Y_AXIS));
-        mainPanelContainer.setVisible(false); // HIDE UNTIL LOADED
+        mainPanelContainer.setVisible(false);
 
         largeIcon = new JLabel();
         largeIcon.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -57,10 +61,10 @@ public class WeatherClient extends JFrame {
 
         add(mainPanelContainer, BorderLayout.CENTER);
 
-        // ===== GRID PANEL (BOTTOM) =====
+        // ===== GRID PANEL =====
         gridPanel = new JPanel(new GridLayout(4, 2, 12, 12));
         gridPanel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
-        gridPanel.setVisible(false); // HIDE UNTIL LOADED
+        gridPanel.setVisible(false);
 
         add(gridPanel, BorderLayout.SOUTH);
     }
@@ -71,22 +75,47 @@ public class WeatherClient extends JFrame {
             PrintWriter pw = new PrintWriter(socket.getOutputStream(), true);
             BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-            pw.println(cityBox.getSelectedItem().toString());
+            String cityName = cityField.getText().trim();
 
-            String json = br.readLine();
+            if (cityName.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Please enter a city name!");
+                return;
+            }
+
+            pw.println(cityName);
+
+            // ===== ĐỌC ĐẾN KHI SERVER ĐÓNG SOCKET =====
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = br.readLine()) != null) {
+                sb.append(line);
+            }
+
+            String json = sb.toString().trim();
+
+            if (json.equals("CITY_NOT_FOUND")) {
+                JOptionPane.showMessageDialog(this,
+                        "City not found: " + cityName,
+                        "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            if (!json.startsWith("{")) {
+                JOptionPane.showMessageDialog(this,
+                        "City not found or invalid format: " + cityName,
+                        "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
             WeatherData data = WeatherParser.parse(json);
 
-            // SHOW PANELS AFTER LOADING
             mainPanelContainer.setVisible(true);
             gridPanel.setVisible(true);
 
-            // ----- MAIN ICON -----
             largeIcon.setIcon(loadAndResizeIcon(selectMainIcon(data.weatherStatus), 160, 160));
-
             tempLabel.setText(data.temperature);
             statusLabel.setText(data.weatherStatus);
 
-            // ----- GRID DETAILS -----
             gridPanel.removeAll();
             addGridItem("Temp", data.temperature, "temp.png");
             addGridItem("RealFeel", data.realFeel, "feelslike.png");
@@ -105,12 +134,11 @@ public class WeatherClient extends JFrame {
         }
     }
 
+
     private void addGridItem(String title, String value, String iconName) {
         JPanel item = new JPanel(new BorderLayout());
         JLabel iconLabel = new JLabel(loadAndResizeIcon(iconName, 40, 40));
         JLabel text = new JLabel("<html>" + title + "<br><b>" + value + "</b></html>", SwingConstants.CENTER);
-
-        text.setHorizontalAlignment(SwingConstants.CENTER);
 
         item.add(iconLabel, BorderLayout.WEST);
         item.add(text, BorderLayout.CENTER);

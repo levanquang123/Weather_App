@@ -10,61 +10,132 @@ import java.net.Socket;
 public class WeatherClient extends JFrame {
 
     private JComboBox<String> cityBox;
-    private JTextArea resultArea;
+    private JLabel largeIcon;
+    private JLabel tempLabel;
+    private JLabel statusLabel;
+    private JPanel gridPanel;
+    private JPanel mainPanelContainer;
 
     public WeatherClient() {
-        setTitle("Weather Client (TCP) - Java Swing");
-        setSize(500, 600);
+        setTitle("Weather Client (Advanced UI)");
+        setSize(420, 600);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
+        setLayout(new BorderLayout());
 
+        // ===== TOP PANEL =====
+        JPanel top = new JPanel(new FlowLayout(FlowLayout.CENTER));
         cityBox = new JComboBox<>(new String[]{"DANANG", "HANOI", "HCM"});
-        JButton btnFetch = new JButton("Lấy dữ liệu");
-
-        btnFetch.addActionListener(e -> fetchWeather());
-
-        resultArea = new JTextArea();
-        resultArea.setFont(new Font("Consolas", Font.PLAIN, 16));
-        resultArea.setEditable(false);
-
-        JPanel top = new JPanel();
+        JButton btn = new JButton("Get Weather");
+        btn.addActionListener(e -> fetchWeather());
         top.add(cityBox);
-        top.add(btnFetch);
-
+        top.add(btn);
         add(top, BorderLayout.NORTH);
-        add(new JScrollPane(resultArea), BorderLayout.CENTER);
+
+        // ===== MAIN WEATHER PANEL (CENTER) =====
+        mainPanelContainer = new JPanel();
+        mainPanelContainer.setLayout(new BoxLayout(mainPanelContainer, BoxLayout.Y_AXIS));
+        mainPanelContainer.setVisible(false); // HIDE UNTIL LOADED
+
+        largeIcon = new JLabel();
+        largeIcon.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        tempLabel = new JLabel("-- °C");
+        tempLabel.setFont(new Font("Arial", Font.BOLD, 38));
+        tempLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        statusLabel = new JLabel("Weather Status");
+        statusLabel.setFont(new Font("Arial", Font.PLAIN, 22));
+        statusLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        mainPanelContainer.add(Box.createVerticalStrut(20));
+        mainPanelContainer.add(largeIcon);
+        mainPanelContainer.add(Box.createVerticalStrut(10));
+        mainPanelContainer.add(tempLabel);
+        mainPanelContainer.add(Box.createVerticalStrut(5));
+        mainPanelContainer.add(statusLabel);
+
+        add(mainPanelContainer, BorderLayout.CENTER);
+
+        // ===== GRID PANEL (BOTTOM) =====
+        gridPanel = new JPanel(new GridLayout(4, 2, 12, 12));
+        gridPanel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
+        gridPanel.setVisible(false); // HIDE UNTIL LOADED
+
+        add(gridPanel, BorderLayout.SOUTH);
     }
 
     private void fetchWeather() {
-        String city = cityBox.getSelectedItem().toString();
-
-        try (Socket socket = new Socket("localhost", 7777)) {
-
+        try {
+            Socket socket = new Socket("localhost", 7777);
             PrintWriter pw = new PrintWriter(socket.getOutputStream(), true);
-            BufferedReader br = new BufferedReader(
-                    new InputStreamReader(socket.getInputStream())
-            );
+            BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-            pw.println(city);
+            pw.println(cityBox.getSelectedItem().toString());
 
             String json = br.readLine();
+            WeatherData data = WeatherParser.parse(json);
 
-            resultArea.setText(
-                    "==== RAW JSON từ Server ====\n\n"
-                            + json
-                            + "\n\n==== FORMAT ====\n\n"
-                            + WeatherParser.parse(json)
-            );
+            // SHOW PANELS AFTER LOADING
+            mainPanelContainer.setVisible(true);
+            gridPanel.setVisible(true);
+
+            // ----- MAIN ICON -----
+            largeIcon.setIcon(loadAndResizeIcon(selectMainIcon(data.weatherStatus), 160, 160));
+
+            tempLabel.setText(data.temperature);
+            statusLabel.setText(data.weatherStatus);
+
+            // ----- GRID DETAILS -----
+            gridPanel.removeAll();
+            addGridItem("Temp", data.temperature, "temp.png");
+            addGridItem("RealFeel", data.realFeel, "feelslike.png");
+            addGridItem("Wind", data.wind, "wind.png");
+            addGridItem("Humidity", data.humidity, "humidity.png");
+            addGridItem("Clouds", data.cloud, "cloud.png");
+            addGridItem("Pressure", data.pressure, "pressure.png");
+            addGridItem("Visibility", data.visibility, "visibility.png");
+            addGridItem("Sunset", data.sunset, "sun.png");
+
+            gridPanel.revalidate();
+            gridPanel.repaint();
 
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Lỗi kết nối Server: " + ex.getMessage());
+            JOptionPane.showMessageDialog(this, ex.getMessage());
         }
     }
 
+    private void addGridItem(String title, String value, String iconName) {
+        JPanel item = new JPanel(new BorderLayout());
+        JLabel iconLabel = new JLabel(loadAndResizeIcon(iconName, 40, 40));
+        JLabel text = new JLabel("<html>" + title + "<br><b>" + value + "</b></html>", SwingConstants.CENTER);
+
+        text.setHorizontalAlignment(SwingConstants.CENTER);
+
+        item.add(iconLabel, BorderLayout.WEST);
+        item.add(text, BorderLayout.CENTER);
+
+        gridPanel.add(item);
+    }
+
+    private ImageIcon loadAndResizeIcon(String name, int w, int h) {
+        var url = getClass().getResource("/icons/" + name);
+        if (url == null) return new ImageIcon();
+
+        Image img = new ImageIcon(url).getImage();
+        return new ImageIcon(img.getScaledInstance(w, h, Image.SCALE_SMOOTH));
+    }
+
+    private String selectMainIcon(String status) {
+        if (status.contains("Clear")) return "sun.png";
+        if (status.contains("Cloud")) return "cloudy.png";
+        if (status.contains("Rain")) return "rain.png";
+        if (status.contains("Fog")) return "fog.png";
+        if (status.contains("Snow")) return "snow.png";
+        return "weather_main.png";
+    }
+
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(
-                () -> new WeatherClient().setVisible(true)
-        );
+        SwingUtilities.invokeLater(() -> new WeatherClient().setVisible(true));
     }
 }

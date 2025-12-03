@@ -2,6 +2,10 @@ package com.quang.weatherclient.client;
 
 import org.json.JSONObject;
 
+import java.time.LocalDate;
+import java.time.format.TextStyle;
+import java.util.Locale;
+
 public class WeatherParser {
 
     public static WeatherData parse(String json) {
@@ -41,6 +45,8 @@ public class WeatherParser {
         data.forecastMinTemp     = new String[n];
         data.forecastMaxTemp     = new String[n];
         data.forecastWeatherCode = new int[n];
+        data.originalForecastDates = new String[n];
+
 
         for (int i = 0; i < n; i++) {
             String rawDate = daily.getJSONArray("time").getString(i); // "2025-12-03"
@@ -58,6 +64,16 @@ public class WeatherParser {
             data.forecastMinTemp[i] = String.format("%.1f°C", tMin);
 
             data.forecastWeatherCode[i] = daily.getJSONArray("weather_code").getInt(i);
+            String fullDate = daily.getJSONArray("time").getString(i);
+
+            data.originalForecastDates[i] = fullDate;
+
+// sửa forecastDates thành tháng-ngày
+            if (fullDate.length() >= 10)
+                data.forecastDates[i] = fullDate.substring(5); // "12-03"
+            else
+                data.forecastDates[i] = fullDate;
+
         }
 
         return data;
@@ -78,5 +94,10 @@ public class WeatherParser {
             case 96, 99 -> "Thunderstorm w/ Hail";
             default -> "Unknown";
         };
+    }
+
+    public static String getWeekday(String fullDate) {
+        LocalDate d = LocalDate.parse(fullDate);  // yyyy-MM-dd
+        return d.getDayOfWeek().getDisplayName(TextStyle.SHORT, Locale.ENGLISH); // Mon, Tue...
     }
 }

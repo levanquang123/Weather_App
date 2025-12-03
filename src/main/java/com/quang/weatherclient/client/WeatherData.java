@@ -19,4 +19,5 @@ public class WeatherData {
     public String[] forecastMinTemp;     // "22.5°C"
     public String[] forecastMaxTemp;     // "23.6°C"
     public int[]    forecastWeatherCode; // 80, 45, 3, ...
+    public String[] originalForecastDates;
 }

@@ -21,7 +21,7 @@ public class WeatherClient extends JFrame {
 
     public WeatherClient() {
         setTitle("Weather Client (Advanced UI)");
-        setSize(520, 650);
+        setSize(610, 760);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
@@ -73,8 +73,13 @@ public class WeatherClient extends JFrame {
         forecastPanel = new JPanel(new GridLayout(1, 7, 8, 8));
         forecastPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         forecastPanel.setVisible(false);
+        forecastPanel.setAlignmentX(Component.CENTER_ALIGNMENT);  // Căn giữa
 
         mainPanelContainer.add(forecastPanel);
+
+        mainPanelContainer.add(Box.createVerticalStrut(15));
+        mainPanelContainer.add(forecastPanel);
+        mainPanelContainer.add(Box.createVerticalStrut(15));
 
         add(mainPanelContainer, BorderLayout.CENTER);
 
@@ -169,20 +174,29 @@ public class WeatherClient extends JFrame {
         int n = data.forecastDates.length;
 
         for (int i = 0; i < n; i++) {
+
             JPanel dayBox = new JPanel();
             dayBox.setLayout(new BoxLayout(dayBox, BoxLayout.Y_AXIS));
             dayBox.setOpaque(false);
+            dayBox.setBorder(BorderFactory.createLineBorder(new Color(210, 210, 210), 1)); // Border mảnh
 
+            // ===== Weekday (Mon/Tue/…) =====
+            String weekday = WeatherParser.getWeekday(data.originalForecastDates[i]);
+            JLabel weekdayLabel = new JLabel(weekday, SwingConstants.CENTER);
+            weekdayLabel.setFont(new Font("Arial", Font.BOLD, 11));
+            weekdayLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+            // ===== Ngày tháng =====
             JLabel dateLabel = new JLabel(data.forecastDates[i], SwingConstants.CENTER);
             dateLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
             dateLabel.setFont(new Font("Arial", Font.PLAIN, 11));
 
+            // ===== Icon nhỏ (32px) =====
             String status = WeatherParser.decodeStatus(data.forecastWeatherCode[i]);
-            JLabel iconLabel = new JLabel(
-                    loadAndResizeIcon(selectMainIcon(status), 40, 40)
-            );
+            JLabel iconLabel = new JLabel(loadAndResizeIcon(selectMainIcon(status), 32, 32));
             iconLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
+            // ===== Temp Min / Max =====
             JLabel tempLabel = new JLabel(
                     data.forecastMinTemp[i] + " / " + data.forecastMaxTemp[i],
                     SwingConstants.CENTER
@@ -190,6 +204,9 @@ public class WeatherClient extends JFrame {
             tempLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
             tempLabel.setFont(new Font("Arial", Font.PLAIN, 11));
 
+            // ===== Add vào box =====
+            dayBox.add(Box.createVerticalStrut(3));
+            dayBox.add(weekdayLabel);
             dayBox.add(dateLabel);
             dayBox.add(Box.createVerticalStrut(4));
             dayBox.add(iconLabel);
@@ -205,15 +222,23 @@ public class WeatherClient extends JFrame {
     }
 
     private void addGridItem(String title, String value, String iconName) {
-        JPanel item = new JPanel(new BorderLayout());
-        JLabel iconLabel = new JLabel(loadAndResizeIcon(iconName, 40, 40));
-        JLabel text = new JLabel("<html>" + title + "<br><b>" + value + "</b></html>", SwingConstants.CENTER);
 
-        item.add(iconLabel, BorderLayout.WEST);
-        item.add(text, BorderLayout.CENTER);
+        JPanel item = new JPanel();
+        item.setLayout(new FlowLayout(FlowLayout.LEFT, 30, 5)); // icon + text gần nhau
+        item.setOpaque(false);
+
+        JLabel iconLabel = new JLabel(loadAndResizeIcon(iconName, 48, 48));
+
+        JLabel textLabel = new JLabel(
+                "<html><b>" + title + "</b><br>" + value + "</html>"
+        );
+
+        item.add(iconLabel);
+        item.add(textLabel);
 
         gridPanel.add(item);
     }
+
 
     private ImageIcon loadAndResizeIcon(String name, int w, int h) {
         var url = getClass().getResource("/icons/" + name);

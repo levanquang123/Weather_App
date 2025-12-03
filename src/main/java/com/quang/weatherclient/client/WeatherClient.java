@@ -27,7 +27,9 @@ public class WeatherClient extends JFrame {
         JPanel top = new JPanel(new FlowLayout(FlowLayout.CENTER));
 
         cityField = new JTextField(15);
+        CitySuggestion.attach(cityField, () -> fetchWeather());
         cityField.setFont(new Font("Arial", Font.PLAIN, 16));
+
         cityField.addActionListener(e -> fetchWeather());
 
 

@@ -28,6 +28,8 @@ public class WeatherClient extends JFrame {
 
         cityField = new JTextField(15);
         cityField.setFont(new Font("Arial", Font.PLAIN, 16));
+        cityField.addActionListener(e -> fetchWeather());
+
 
         JButton btn = new JButton("Get Weather");
         btn.addActionListener(e -> fetchWeather());

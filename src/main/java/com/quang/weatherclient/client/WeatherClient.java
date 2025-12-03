@@ -16,9 +16,12 @@ public class WeatherClient extends JFrame {
     private JPanel gridPanel;
     private JPanel mainPanelContainer;
 
+    // Panel hiển thị 7 ngày
+    private JPanel forecastPanel;
+
     public WeatherClient() {
         setTitle("Weather Client (Advanced UI)");
-        setSize(420, 600);
+        setSize(520, 650);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
@@ -27,11 +30,13 @@ public class WeatherClient extends JFrame {
         JPanel top = new JPanel(new FlowLayout(FlowLayout.CENTER));
 
         cityField = new JTextField(15);
-        CitySuggestion.attach(cityField, () -> fetchWeather());
         cityField.setFont(new Font("Arial", Font.PLAIN, 16));
 
-        cityField.addActionListener(e -> fetchWeather());
+        // Autocomplete
+        CitySuggestion.attach(cityField, this::fetchWeather);
 
+        // Enter
+        cityField.addActionListener(e -> fetchWeather());
 
         JButton btn = new JButton("Get Weather");
         btn.addActionListener(e -> fetchWeather());
@@ -62,10 +67,18 @@ public class WeatherClient extends JFrame {
         mainPanelContainer.add(tempLabel);
         mainPanelContainer.add(Box.createVerticalStrut(5));
         mainPanelContainer.add(statusLabel);
+        mainPanelContainer.add(Box.createVerticalStrut(10));
+
+        // ===== FORECAST PANEL (7 ngày) =====
+        forecastPanel = new JPanel(new GridLayout(1, 7, 8, 8));
+        forecastPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        forecastPanel.setVisible(false);
+
+        mainPanelContainer.add(forecastPanel);
 
         add(mainPanelContainer, BorderLayout.CENTER);
 
-        // ===== GRID PANEL =====
+        // ===== GRID PANEL (chỉ số chi tiết) =====
         gridPanel = new JPanel(new GridLayout(4, 2, 12, 12));
         gridPanel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
         gridPanel.setVisible(false);
@@ -75,10 +88,6 @@ public class WeatherClient extends JFrame {
 
     private void fetchWeather() {
         try {
-            Socket socket = new Socket("localhost", 7777);
-            PrintWriter pw = new PrintWriter(socket.getOutputStream(), true);
-            BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-
             String cityName = cityField.getText().trim();
 
             if (cityName.isEmpty()) {
@@ -86,9 +95,12 @@ public class WeatherClient extends JFrame {
                 return;
             }
 
+            Socket socket = new Socket("localhost", 7777);
+            PrintWriter pw = new PrintWriter(socket.getOutputStream(), true);
+            BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+
             pw.println(cityName);
 
-            // ===== ĐỌC ĐẾN KHI SERVER ĐÓNG SOCKET =====
             StringBuilder sb = new StringBuilder();
             String line;
             while ((line = br.readLine()) != null) {
@@ -96,6 +108,7 @@ public class WeatherClient extends JFrame {
             }
 
             String json = sb.toString().trim();
+            System.out.println("SERVER JSON: " + json);
 
             if (json.equals("CITY_NOT_FOUND")) {
                 JOptionPane.showMessageDialog(this,
@@ -113,31 +126,83 @@ public class WeatherClient extends JFrame {
 
             WeatherData data = WeatherParser.parse(json);
 
+            // Hiện panel chính
             mainPanelContainer.setVisible(true);
             gridPanel.setVisible(true);
 
+            // Icon lớn + nhiệt độ + trạng thái hiện tại
             largeIcon.setIcon(loadAndResizeIcon(selectMainIcon(data.weatherStatus), 160, 160));
             tempLabel.setText(data.temperature);
             statusLabel.setText(data.weatherStatus);
 
+            // ===== GRID 8 THÔNG SỐ =====
             gridPanel.removeAll();
-            addGridItem("Temp", data.temperature, "temp.png");
-            addGridItem("RealFeel", data.realFeel, "feelslike.png");
-            addGridItem("Wind", data.wind, "wind.png");
-            addGridItem("Humidity", data.humidity, "humidity.png");
-            addGridItem("Clouds", data.cloud, "cloud.png");
-            addGridItem("Pressure", data.pressure, "pressure.png");
-            addGridItem("Visibility", data.visibility, "visibility.png");
-            addGridItem("Sunset", data.sunset, "sun.png");
+            addGridItem("Temp",      data.temperature, "temp.png");
+            addGridItem("RealFeel",  data.realFeel,    "feelslike.png");
+            addGridItem("Wind",      data.wind,        "wind.png");
+            addGridItem("Humidity",  data.humidity,    "humidity.png");
+            addGridItem("Clouds",    data.cloud,       "cloud.png");
+            addGridItem("Pressure",  data.pressure,    "pressure.png");
+            addGridItem("Visibility",data.visibility,  "visibility.png");
+            addGridItem("Sunset",    data.sunset,      "sun.png");
 
             gridPanel.revalidate();
             gridPanel.repaint();
 
+            // ===== FORECAST 7 NGÀY =====
+            renderForecast(data);
+
         } catch (Exception ex) {
+            ex.printStackTrace();
             JOptionPane.showMessageDialog(this, ex.getMessage());
         }
     }
 
+    private void renderForecast(WeatherData data) {
+        if (data.forecastDates == null || data.forecastDates.length == 0) {
+            forecastPanel.setVisible(false);
+            return;
+        }
+
+        forecastPanel.removeAll();
+
+        int n = data.forecastDates.length;
+
+        for (int i = 0; i < n; i++) {
+            JPanel dayBox = new JPanel();
+            dayBox.setLayout(new BoxLayout(dayBox, BoxLayout.Y_AXIS));
+            dayBox.setOpaque(false);
+
+            JLabel dateLabel = new JLabel(data.forecastDates[i], SwingConstants.CENTER);
+            dateLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            dateLabel.setFont(new Font("Arial", Font.PLAIN, 11));
+
+            String status = WeatherParser.decodeStatus(data.forecastWeatherCode[i]);
+            JLabel iconLabel = new JLabel(
+                    loadAndResizeIcon(selectMainIcon(status), 40, 40)
+            );
+            iconLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+            JLabel tempLabel = new JLabel(
+                    data.forecastMinTemp[i] + " / " + data.forecastMaxTemp[i],
+                    SwingConstants.CENTER
+            );
+            tempLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            tempLabel.setFont(new Font("Arial", Font.PLAIN, 11));
+
+            dayBox.add(dateLabel);
+            dayBox.add(Box.createVerticalStrut(4));
+            dayBox.add(iconLabel);
+            dayBox.add(Box.createVerticalStrut(4));
+            dayBox.add(tempLabel);
+
+            forecastPanel.add(dayBox);
+        }
+
+        forecastPanel.setVisible(true);
+        forecastPanel.revalidate();
+        forecastPanel.repaint();
+    }
 
     private void addGridItem(String title, String value, String iconName) {
         JPanel item = new JPanel(new BorderLayout());
@@ -161,9 +226,11 @@ public class WeatherClient extends JFrame {
     private String selectMainIcon(String status) {
         if (status.contains("Clear")) return "sun.png";
         if (status.contains("Cloud")) return "cloudy.png";
+        if (status.contains("Rain Showers")) return "rain.png";
         if (status.contains("Rain")) return "rain.png";
         if (status.contains("Fog")) return "fog.png";
         if (status.contains("Snow")) return "snow.png";
+        if (status.contains("Thunderstorm")) return "storm.png";
         return "weather_main.png";
     }
 

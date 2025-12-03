@@ -13,7 +13,9 @@ public class WeatherFetcher {
                 "https://api.open-meteo.com/v1/forecast?latitude=%f&longitude=%f"
                         + "&current=temperature_2m,relative_humidity_2m,apparent_temperature,"
                         + "cloud_cover,pressure_msl,visibility,weather_code,wind_speed_10m"
-                        + "&daily=sunrise,sunset&timezone=auto",
+                        + "&daily=temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset"
+                        + "&forecast_days=7"
+                        + "&timezone=auto",
                 lat, lon
         );
 
